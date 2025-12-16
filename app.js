@@ -106,6 +106,7 @@ class ProductivityTracker {
             // Check if activity is still active
             if (!this.activeActivity) {
                 this.clearTimer();
+                this.stopTitleFlashing();
                 return;
             }
             
