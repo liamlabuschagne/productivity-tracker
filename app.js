@@ -80,17 +80,21 @@ class ProductivityTracker {
         this.updateTimerDisplay();
     }
 
-    startTimer() {
-        // Clear any existing timer interval
+    clearTimer() {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
+            this.timerInterval = null;
         }
+    }
+
+    startTimer() {
+        // Clear any existing timer interval
+        this.clearTimer();
         
         this.timerInterval = setInterval(() => {
             // Check if activity is still active
             if (!this.activeActivity) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
+                this.clearTimer();
                 return;
             }
             
@@ -127,6 +131,8 @@ class ProductivityTracker {
     }
 
     createBeepOscillator() {
+        if (!this.audioContext) return;
+        
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -179,8 +185,7 @@ class ProductivityTracker {
     completeActivity() {
         if (!this.activeActivity) return;
 
-        clearInterval(this.timerInterval);
-        this.timerInterval = null;
+        this.clearTimer();
         
         // Clear any pending notification timeouts
         this.notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
