@@ -249,6 +249,25 @@ tbody tr:hover {
     font-style: italic;
 }
 
+.delete-btn {
+    background: none;
+    border: none;
+    font-size: 1.3em;
+    cursor: pointer;
+    padding: 5px 10px;
+    transition: transform 0.2s, opacity 0.2s;
+    opacity: 0.6;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.delete-btn:active {
+    transform: scale(0.9);
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 2em;
