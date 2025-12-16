@@ -4,7 +4,7 @@ class ProductivityTracker {
         this.activities = [];
         this.activeActivity = null;
         this.timerInterval = null;
-        this.notificationSound = document.getElementById('notification-sound');
+        this.audioContext = null;
         
         this.init();
     }
@@ -115,39 +115,43 @@ class ProductivityTracker {
 
     playNotificationSound() {
         try {
+            // Create AudioContext on first use and reuse it
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
             // Generate a simple beep sound
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
             
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(this.audioContext.destination);
             
             oscillator.frequency.value = 800;
             oscillator.type = 'sine';
             
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
             
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.5);
             
             // Play multiple beeps
             setTimeout(() => {
-                const oscillator2 = audioContext.createOscillator();
-                const gainNode2 = audioContext.createGain();
+                const oscillator2 = this.audioContext.createOscillator();
+                const gainNode2 = this.audioContext.createGain();
                 
                 oscillator2.connect(gainNode2);
-                gainNode2.connect(audioContext.destination);
+                gainNode2.connect(this.audioContext.destination);
                 
                 oscillator2.frequency.value = 800;
                 oscillator2.type = 'sine';
                 
-                gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                gainNode2.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode2.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
                 
-                oscillator2.start(audioContext.currentTime);
-                oscillator2.stop(audioContext.currentTime + 0.5);
+                oscillator2.start(this.audioContext.currentTime);
+                oscillator2.stop(this.audioContext.currentTime + 0.5);
             }, 600);
         } catch (error) {
             console.error('Error playing notification sound:', error);
@@ -158,6 +162,7 @@ class ProductivityTracker {
         if (!this.activeActivity) return;
 
         clearInterval(this.timerInterval);
+        this.timerInterval = null;
 
         const endTime = new Date();
         const startTime = new Date(this.activeActivity.startTime);
