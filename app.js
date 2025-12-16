@@ -79,7 +79,7 @@ class ProductivityTracker {
             
             this.updateTimerDisplay();
 
-            if (this.activeActivity.remainingSeconds <= 0) {
+            if (this.activeActivity.remainingSeconds === 0) {
                 this.timerExpired();
             }
         }, 1000);
@@ -103,14 +103,8 @@ class ProductivityTracker {
     }
 
     timerExpired() {
-        clearInterval(this.timerInterval);
         this.playNotificationSound();
-        
-        // Continue counting in negative
-        this.timerInterval = setInterval(() => {
-            this.activeActivity.remainingSeconds--;
-            this.updateTimerDisplay();
-        }, 1000);
+        // Timer continues running to show negative time
     }
 
     playNotificationSound() {
@@ -118,6 +112,11 @@ class ProductivityTracker {
             // Create AudioContext on first use and reuse it
             if (!this.audioContext) {
                 this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Resume AudioContext if it's suspended (browser autoplay policy)
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
             }
             
             // Generate a simple beep sound
