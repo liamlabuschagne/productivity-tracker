@@ -32,8 +32,8 @@ class ProductivityTracker {
 
         // Event delegation for delete buttons
         document.getElementById('activities-tbody').addEventListener('click', (e) => {
-            if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
-                const btn = e.target.classList.contains('delete-btn') ? e.target : e.target.closest('.delete-btn');
+            const btn = e.target.closest('.delete-btn');
+            if (btn) {
                 const activityId = parseInt(btn.dataset.id);
                 this.deleteActivity(activityId);
             }
@@ -297,7 +297,7 @@ class ProductivityTracker {
         const activity = this.activities.find(a => a.id === activityId);
         if (!activity) return;
 
-        // Show confirmation dialog
+        // Show confirmation dialog (native confirm() treats content as plain text, no XSS risk)
         const confirmed = confirm(`Are you sure you want to delete this activity?\n\nActivity: ${activity.name}`);
         
         if (confirmed) {
