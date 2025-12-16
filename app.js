@@ -6,6 +6,8 @@ class ProductivityTracker {
         this.timerInterval = null;
         this.audioContext = null;
         this.notificationTimeouts = [];
+        this.titleFlashInterval = null;
+        this.originalTitle = document.title;
         
         this.init();
     }
@@ -136,6 +138,7 @@ class ProductivityTracker {
 
     timerExpired() {
         this.playNotificationSound();
+        this.startTitleFlashing();
         // Timer continues running to show negative time
     }
 
@@ -191,10 +194,33 @@ class ProductivityTracker {
         }
     }
 
+    startTitleFlashing() {
+        // Stop any existing title flashing
+        this.stopTitleFlashing();
+        
+        let isOriginalTitle = true;
+        const notificationTitle = '⏰ Time\'s Up!';
+        
+        // Flash the title every second
+        this.titleFlashInterval = setInterval(() => {
+            document.title = isOriginalTitle ? notificationTitle : this.originalTitle;
+            isOriginalTitle = !isOriginalTitle;
+        }, 1000);
+    }
+
+    stopTitleFlashing() {
+        if (this.titleFlashInterval) {
+            clearInterval(this.titleFlashInterval);
+            this.titleFlashInterval = null;
+            document.title = this.originalTitle;
+        }
+    }
+
     completeActivity() {
         if (!this.activeActivity) return;
 
         this.clearTimer();
+        this.stopTitleFlashing();
         
         // Clear any pending notification timeouts
         this.notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
