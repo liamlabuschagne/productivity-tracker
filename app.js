@@ -297,6 +297,12 @@ class ProductivityTracker {
         const activity = this.activities.find(a => a.id === activityId);
         if (!activity) return;
 
+        // Prevent deleting the currently active activity
+        if (this.activeActivity && this.activeActivity.id === activityId) {
+            alert('Cannot delete an activity that is currently in progress. Please complete or cancel it first.');
+            return;
+        }
+
         // Show confirmation dialog (native confirm() treats content as plain text, no XSS risk)
         const confirmed = confirm(`Are you sure you want to delete this activity?\n\nActivity: ${activity.name}`);
         
