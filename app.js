@@ -5,6 +5,7 @@ class ProductivityTracker {
         this.activeActivity = null;
         this.timerInterval = null;
         this.audioContext = null;
+        this.notificationTimeouts = [];
         
         this.init();
     }
@@ -74,6 +75,11 @@ class ProductivityTracker {
     }
 
     startTimer() {
+        // Clear any existing timer interval
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        
         this.timerInterval = setInterval(() => {
             this.activeActivity.remainingSeconds--;
             
@@ -136,7 +142,7 @@ class ProductivityTracker {
             oscillator.stop(this.audioContext.currentTime + 0.5);
             
             // Play multiple beeps
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 const oscillator2 = this.audioContext.createOscillator();
                 const gainNode2 = this.audioContext.createGain();
                 
@@ -151,7 +157,16 @@ class ProductivityTracker {
                 
                 oscillator2.start(this.audioContext.currentTime);
                 oscillator2.stop(this.audioContext.currentTime + 0.5);
+                
+                // Remove this timeout from tracking array
+                const index = this.notificationTimeouts.indexOf(timeoutId);
+                if (index > -1) {
+                    this.notificationTimeouts.splice(index, 1);
+                }
             }, 600);
+            
+            // Track timeout for cleanup
+            this.notificationTimeouts.push(timeoutId);
         } catch (error) {
             console.error('Error playing notification sound:', error);
         }
@@ -162,6 +177,10 @@ class ProductivityTracker {
 
         clearInterval(this.timerInterval);
         this.timerInterval = null;
+        
+        // Clear any pending notification timeouts
+        this.notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+        this.notificationTimeouts = [];
 
         const endTime = new Date();
         const startTime = new Date(this.activeActivity.startTime);
