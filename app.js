@@ -39,6 +39,12 @@ class ProductivityTracker {
 
         const activityName = document.getElementById('activity-name').value;
         const durationEstimate = parseInt(document.getElementById('duration-estimate').value);
+        
+        // Validate duration estimate
+        if (isNaN(durationEstimate) || durationEstimate < 1) {
+            alert('Please enter a valid duration estimate (minimum 1 minute).');
+            return;
+        }
 
         const activity = {
             id: Date.now(),
@@ -308,6 +314,9 @@ class ProductivityTracker {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Clean up the blob URL to prevent memory leaks
+        URL.revokeObjectURL(url);
     }
 }
 
