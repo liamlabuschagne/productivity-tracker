@@ -61,14 +61,20 @@ class ProductivityTracker {
             id: Date.now(),
             name: activityName,
             startTime: new Date().toISOString(),
+            endTime: null,
             estimatedMinutes: durationEstimate,
             actualMinutes: null,
-            status: 'active',
+            status: 'in-progress',
             difference: null
         };
 
         this.activeActivity = activity;
         this.activeActivity.remainingSeconds = durationEstimate * 60;
+        
+        // Add to activities list immediately with "In Progress" status
+        this.activities.unshift(activity);
+        this.saveToLocalStorage();
+        this.renderActivities();
         
         // Clear form
         document.getElementById('activity-form').reset();
@@ -231,6 +237,7 @@ class ProductivityTracker {
         const startTime = new Date(this.activeActivity.startTime);
         const actualMinutes = (endTime - startTime) / 60000; // Convert ms to minutes
         
+        this.activeActivity.endTime = endTime.toISOString();
         this.activeActivity.actualMinutes = parseFloat(actualMinutes.toFixed(2));
         this.activeActivity.status = 'completed';
         
@@ -238,8 +245,11 @@ class ProductivityTracker {
         const difference = ((this.activeActivity.actualMinutes - this.activeActivity.estimatedMinutes) / this.activeActivity.estimatedMinutes) * 100;
         this.activeActivity.difference = parseFloat(difference.toFixed(1));
 
-        // Add to activities list
-        this.activities.unshift(this.activeActivity);
+        // Update the activity in the list (it's already there)
+        const activityIndex = this.activities.findIndex(a => a.id === this.activeActivity.id);
+        if (activityIndex !== -1) {
+            this.activities[activityIndex] = this.activeActivity;
+        }
         
         // Save to local storage
         this.saveToLocalStorage();
@@ -266,17 +276,21 @@ class ProductivityTracker {
         
         tbody.innerHTML = this.activities.map(activity => {
             const startTime = this.formatTime(new Date(activity.startTime));
+            const endTime = activity.endTime ? this.formatTime(new Date(activity.endTime)) : '-';
             const diffClass = activity.difference > 0 ? 'difference-negative' : 'difference-positive';
             const diffSign = activity.difference > 0 ? '+' : '';
+            const displayStatus = activity.status === 'in-progress' ? 'In Progress' : 
+                                 activity.status.charAt(0).toUpperCase() + activity.status.slice(1);
             
             return `
-                <tr>
-                    <td>${this.escapeHtml(activity.name)}</td>
-                    <td>${startTime}</td>
-                    <td>${activity.estimatedMinutes}</td>
-                    <td>${activity.actualMinutes}</td>
-                    <td class="${diffClass}">${diffSign}${activity.difference}%</td>
-                    <td class="status-${activity.status}">${activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}</td>
+                <tr data-id="${activity.id}">
+                    <td class="editable" data-field="name">${this.escapeHtml(activity.name)}</td>
+                    <td class="editable" data-field="startTime">${startTime}</td>
+                    <td class="editable" data-field="endTime">${endTime}</td>
+                    <td class="editable" data-field="estimatedMinutes">${activity.estimatedMinutes}</td>
+                    <td class="editable" data-field="actualMinutes">${activity.actualMinutes || '-'}</td>
+                    <td class="${diffClass}">${activity.difference !== null ? diffSign + activity.difference + '%' : '-'}</td>
+                    <td class="editable status-${activity.status}" data-field="status">${displayStatus}</td>
                     <td>
                         <button class="delete-btn" data-id="${activity.id}" aria-label="Delete activity" title="Delete activity">
                             🗑️
@@ -285,6 +299,9 @@ class ProductivityTracker {
                 </tr>
             `;
         }).join('');
+        
+        // Attach event listeners for inline editing
+        this.attachEditListeners();
     }
 
     formatTime(date) {
@@ -345,19 +362,167 @@ class ProductivityTracker {
         }
     }
 
+    attachEditListeners() {
+        const editableCells = document.querySelectorAll('.editable');
+        editableCells.forEach(cell => {
+            cell.addEventListener('click', (e) => {
+                this.makeEditable(e.target);
+            });
+        });
+    }
+
+    makeEditable(cell) {
+        // Don't allow editing if already editing
+        if (cell.querySelector('input') || cell.querySelector('select')) {
+            return;
+        }
+
+        const field = cell.dataset.field;
+        const row = cell.closest('tr');
+        const activityId = parseInt(row.dataset.id);
+        const activity = this.activities.find(a => a.id === activityId);
+        
+        if (!activity) return;
+
+        const currentValue = cell.textContent.trim();
+        const originalValue = activity[field];
+
+        // Create appropriate input based on field type
+        let input;
+        if (field === 'status') {
+            input = document.createElement('select');
+            input.className = 'edit-select';
+            const options = ['in-progress', 'completed'];
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt === 'in-progress' ? 'In Progress' : 'Completed';
+                if (activity.status === opt) {
+                    option.selected = true;
+                }
+                input.appendChild(option);
+            });
+        } else if (field === 'estimatedMinutes' || field === 'actualMinutes') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'edit-input';
+            input.value = originalValue || '';
+            input.min = '0';
+            input.step = '0.1';
+        } else if (field === 'startTime' || field === 'endTime') {
+            input = document.createElement('input');
+            input.type = 'datetime-local';
+            input.className = 'edit-input';
+            if (originalValue) {
+                const date = new Date(originalValue);
+                // Format for datetime-local input
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'edit-input';
+            input.value = originalValue;
+        }
+
+        // Replace cell content with input
+        cell.innerHTML = '';
+        cell.appendChild(input);
+        input.focus();
+
+        // Handle save on blur or enter
+        const saveEdit = () => {
+            let newValue = input.value.trim();
+            
+            // Validate and convert based on field type
+            if (field === 'estimatedMinutes' || field === 'actualMinutes') {
+                newValue = parseFloat(newValue);
+                if (isNaN(newValue) || newValue < 0) {
+                    alert('Please enter a valid number greater than or equal to 0.');
+                    input.focus();
+                    return;
+                }
+            } else if (field === 'startTime' || field === 'endTime') {
+                if (newValue) {
+                    newValue = new Date(newValue).toISOString();
+                } else if (field === 'endTime') {
+                    newValue = null;
+                } else {
+                    alert('Start time is required.');
+                    input.focus();
+                    return;
+                }
+            } else if (field === 'name' && !newValue) {
+                alert('Activity name cannot be empty.');
+                input.focus();
+                return;
+            }
+
+            // Update the activity
+            activity[field] = newValue;
+            
+            // Recalculate actual minutes and difference if times were changed
+            if ((field === 'startTime' || field === 'endTime') && activity.startTime && activity.endTime) {
+                const start = new Date(activity.startTime);
+                const end = new Date(activity.endTime);
+                const actualMinutes = (end - start) / 60000;
+                activity.actualMinutes = parseFloat(actualMinutes.toFixed(2));
+                
+                if (activity.estimatedMinutes) {
+                    const difference = ((activity.actualMinutes - activity.estimatedMinutes) / activity.estimatedMinutes) * 100;
+                    activity.difference = parseFloat(difference.toFixed(1));
+                }
+            } else if (field === 'estimatedMinutes' && activity.actualMinutes) {
+                const difference = ((activity.actualMinutes - activity.estimatedMinutes) / activity.estimatedMinutes) * 100;
+                activity.difference = parseFloat(difference.toFixed(1));
+            } else if (field === 'actualMinutes' && activity.estimatedMinutes) {
+                const difference = ((activity.actualMinutes - activity.estimatedMinutes) / activity.estimatedMinutes) * 100;
+                activity.difference = parseFloat(difference.toFixed(1));
+            }
+            
+            // If status changed to completed and there's an active activity with this ID
+            if (field === 'status' && newValue === 'completed' && this.activeActivity && this.activeActivity.id === activityId) {
+                this.clearTimer();
+                this.stopTitleFlashing();
+                this.notificationTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+                this.notificationTimeouts = [];
+                this.activeActivity = null;
+                document.getElementById('active-section').style.display = 'none';
+            }
+
+            this.saveToLocalStorage();
+            this.renderActivities();
+        };
+
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveEdit();
+            } else if (e.key === 'Escape') {
+                this.renderActivities();
+            }
+        });
+    }
+
     exportToCSV() {
         if (this.activities.length === 0) {
             alert('No activities to export.');
             return;
         }
 
-        const headers = ['Activity', 'Start Time', 'Estimated (min)', 'Actual (min)', 'Difference (%)', 'Status'];
+        const headers = ['Activity', 'Start Time', 'End Time', 'Estimated (min)', 'Actual (min)', 'Difference (%)', 'Status'];
         const rows = this.activities.map(activity => [
             activity.name,
             this.formatTime(new Date(activity.startTime)),
+            activity.endTime ? this.formatTime(new Date(activity.endTime)) : '',
             activity.estimatedMinutes,
-            activity.actualMinutes,
-            activity.difference,
+            activity.actualMinutes || '',
+            activity.difference || '',
             activity.status
         ]);
 

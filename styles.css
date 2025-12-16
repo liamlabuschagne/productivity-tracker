@@ -224,8 +224,38 @@ tbody tr:hover {
     background: #f8f9fa;
 }
 
+.editable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.editable:hover {
+    background-color: #e3f2fd;
+}
+
+.edit-input,
+.edit-select {
+    width: 100%;
+    padding: 5px;
+    border: 2px solid #667eea;
+    border-radius: 3px;
+    font-size: 0.95em;
+    font-family: inherit;
+}
+
+.edit-input:focus,
+.edit-select:focus {
+    outline: none;
+    border-color: #764ba2;
+}
+
 .status-completed {
     color: #28a745;
+    font-weight: 600;
+}
+
+.status-in-progress {
+    color: #ff9800;
     font-weight: 600;
 }
 
