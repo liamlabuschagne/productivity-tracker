@@ -29,6 +29,15 @@ class ProductivityTracker {
         document.getElementById('export-btn').addEventListener('click', () => {
             this.exportToCSV();
         });
+
+        // Event delegation for delete buttons
+        document.getElementById('activities-tbody').addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
+                const btn = e.target.classList.contains('delete-btn') ? e.target : e.target.closest('.delete-btn');
+                const activityId = parseInt(btn.dataset.id);
+                this.deleteActivity(activityId);
+            }
+        });
     }
 
     startActivity() {
@@ -241,6 +250,11 @@ class ProductivityTracker {
                     <td>${activity.actualMinutes}</td>
                     <td class="${diffClass}">${diffSign}${activity.difference}%</td>
                     <td class="status-${activity.status}">${activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}</td>
+                    <td>
+                        <button class="delete-btn" data-id="${activity.id}" aria-label="Delete activity" title="Delete activity">
+                            🗑️
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -275,6 +289,26 @@ class ProductivityTracker {
                 console.error('Error loading from local storage:', error);
                 this.activities = [];
             }
+        }
+    }
+
+    deleteActivity(activityId) {
+        // Find the activity to get its name for the confirmation dialog
+        const activity = this.activities.find(a => a.id === activityId);
+        if (!activity) return;
+
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete this activity?\n\nActivity: ${activity.name}\n\nYes/No`);
+        
+        if (confirmed) {
+            // Remove the activity from the array
+            this.activities = this.activities.filter(a => a.id !== activityId);
+            
+            // Save to local storage
+            this.saveToLocalStorage();
+            
+            // Re-render activities
+            this.renderActivities();
         }
     }
 
