@@ -298,7 +298,7 @@ class ProductivityTracker {
         if (!activity) return;
 
         // Show confirmation dialog
-        const confirmed = confirm(`Are you sure you want to delete this activity?\n\nActivity: ${activity.name}\n\nYes/No`);
+        const confirmed = confirm(`Are you sure you want to delete this activity?\n\nActivity: ${activity.name}`);
         
         if (confirmed) {
             // Remove the activity from the array
