@@ -87,6 +87,13 @@ class ProductivityTracker {
         }
         
         this.timerInterval = setInterval(() => {
+            // Check if activity is still active
+            if (!this.activeActivity) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+                return;
+            }
+            
             this.activeActivity.remainingSeconds--;
             
             this.updateTimerDisplay();
@@ -119,6 +126,23 @@ class ProductivityTracker {
         // Timer continues running to show negative time
     }
 
+    createBeepOscillator() {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.5);
+    }
+
     playNotificationSound() {
         try {
             // Create AudioContext on first use and reuse it
@@ -131,38 +155,12 @@ class ProductivityTracker {
                 this.audioContext.resume();
             }
             
-            // Generate a simple beep sound
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
+            // Play first beep
+            this.createBeepOscillator();
             
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
-            
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + 0.5);
-            
-            // Play multiple beeps
+            // Play second beep after delay
             const timeoutId = setTimeout(() => {
-                const oscillator2 = this.audioContext.createOscillator();
-                const gainNode2 = this.audioContext.createGain();
-                
-                oscillator2.connect(gainNode2);
-                gainNode2.connect(this.audioContext.destination);
-                
-                oscillator2.frequency.value = 800;
-                oscillator2.type = 'sine';
-                
-                gainNode2.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-                gainNode2.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
-                
-                oscillator2.start(this.audioContext.currentTime);
-                oscillator2.stop(this.audioContext.currentTime + 0.5);
+                this.createBeepOscillator();
                 
                 // Remove this timeout from tracking array
                 const index = this.notificationTimeouts.indexOf(timeoutId);
